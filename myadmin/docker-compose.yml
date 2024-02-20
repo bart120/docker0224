@@ -1,0 +1,71 @@
+version: '3.8'
+
+networks:
+  backend:
+    name: network-backend
+    external: false
+  frontend:
+    name: network-frontend
+
+services:
+  database:
+    image: mysql:latest
+    container_name: mysql-cont
+    environment:
+      - MYSQL_ROOT_PASSWORD=${ROOT_PASSWORD}
+      - MYSQL_DATABASE=${DB_NAME}
+      - MYSQL_USER=${DB_USER}
+      - MYSQL_PASSWORD=${DB_PASSWORD}
+    #ports:
+    #  - 3306:3306
+    volumes:
+      - D:\docker\database:/var/lib/mysql
+    restart: on-failure
+    networks:
+      - backend
+  phpmyadmin:
+    container_name: admin-cont
+    image: phpmyadmin:latest
+    environment:
+      - PMA_USER=root
+      - PMA_PASSWORD=${ROOT_PASSWORD}
+      - PMA_HOST=database
+    ports:
+      - 8080:80
+    depends_on:
+      - database
+    networks:
+      - frontend
+      - backend
+  blue:
+    container_name: blue-cont
+    build:
+      dockerfile: ../hello/Dockerfile
+      context: ../hello
+    ports:
+      - 9090:80
+  wordpress:
+    image: wordpress:latest
+    ports:
+      - 4060-4063:80
+    environment:
+      - WORDPRESS_DB_HOST=database
+      - WORDPRESS_DB_NAME=${DB_NAME}
+      - WORDPRESS_DB_USER=${DB_USER}
+      - WORDPRESS_DB_PASSWORD=${DB_PASSWORD}
+    networks:
+      - backend
+      - frontend
+    depends_on:
+      - database
+    deploy:
+      mode: replicated
+      replicas: 4
+      endpoint_mode: vip
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 50M
+        reservations:
+          cpus: '0.25'
+          memory: 20M
